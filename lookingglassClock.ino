@@ -1,7 +1,7 @@
 #include <Stepper.h>
 
 //The amount of time in minutes the clock can be ahead of its setpoint before completing forward revolutions
-#define TOLERANCE 5
+#define TOLERANCE 20
 
 const int stepsPerRevolution = 2038;
 
@@ -12,23 +12,27 @@ const int stepPin4 = 6;
 const int highBitPin = 23;
 const int lowBitPin = 24;
 
-const int stepsPerClockRevolution = 4076;
+const int stepsPerClockRevolution = 720;
 //The value '5' in the below expression represents
 const int tolerance = stepsPerClockRevolution / (720 / TOLERANCE);
-Stepper clockDrive(stepsPerRevolution, pin1, pin2, pin3, pin4);
+Stepper clockDrive(stepsPerRevolution, stepPin1, stepPin2, stepPin3, stepPin4);
 
 int currentPlacement = 0;
 int setPlacement = 0;
 
-int get16bit(high, low){
+int get16bit(int high, int low){
   return high*255 + low;
 }
+
+String DMXprint = "DMX Value: ";
+String positionPrint = "Position: ";
+String setPrint = "Set Position: ";
 
 
 int DMXval = 0;
 
 //Returns true for forward, false for backward
-bool getDirection(current, goal) {
+bool getDirection(int current, int goal) {
   //Shift all values up so we don't have to monkey around with cycling through midnight
   int goalAdjusted = goal + tolerance;
   int currentAdjusted = current + tolerance;
@@ -48,21 +52,33 @@ bool getDirection(current, goal) {
 }
 
 //Moves the clock forward or backward a given amount of time in minutes
-void locomote(minutes){
+void locomote(int minutes){
   int movementSteps = stepsPerClockRevolution / (720 / minutes);
-  if getDirection(currentPlacement, setPlacement) {
-    clockDrive.step(movementSteps);
-    currentPlacement = currentPlacement + movementSteps;
-    //Is this spilling over midnight?
-    if (currentPlacement > stepsPerClockRevolution) {
-      currentPlacement = currentPlacement - stepsPerClockRevolution);
+  if (getDirection(currentPlacement, setPlacement)) {
+    while (movementSteps > 0) {
+      if (setPlacement == currentPlacement) {
+        break;
+      }
+      clockDrive.step(1);
+      currentPlacement = currentPlacement + movementSteps;
+      //Is this spilling over midnight?
+      if (currentPlacement > stepsPerClockRevolution) {
+        currentPlacement = currentPlacement - stepsPerClockRevolution;
+      }
+      movementSteps --;
     }
   }
   else {
-    clockDrive.step(movementSteps * -1);
-    currentPlacement = currentPlacement - movementSteps;
-    if (currentPlacement < 0) {
-      currentPlacement = stepsPerClockRevolution + currentPlacement;
+    while (movementSteps > 0) {
+      if (setPlacement == currentPlacement) {
+        break;
+      }
+      clockDrive.step(-1);
+      currentPlacement = currentPlacement - movementSteps;
+      if (currentPlacement < 0) {
+        currentPlacement = stepsPerClockRevolution + currentPlacement;
+      }
+      movementSteps --;
     }
   }
 }
@@ -72,11 +88,19 @@ int getDMX(){
   int lowBit = pulseIn(lowBitPin, HIGH);
   highBit = map(highBit, 1000, 2000, 0, 255);
   lowBit = map(lowBit, 1000, 2000, 0, 255);
-  return get16bit(highBit, lowBit);
+  int sixteenBit = get16bit(highBit, lowBit);
+  if (sixteenBit < 0) {
+    sixteenBit = 0;
+  }
+  if (sixteenBit > 65535) {
+    sixteenBit = 65535;
+  }
+  return sixteenBit;
 }
 
 void setup() {
   // put your setup code here, to run once:
+  Serial.begin(9600);
   clockDrive.setSpeed(6);
   pinMode(highBitPin, INPUT);
   pinMode(lowBitPin, INPUT);
@@ -85,6 +109,10 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   DMXval = getDMX();
+  Serial.println(DMXprint + DMXval);
+  Serial.println(positionPrint + currentPlacement);
+  Serial.println(setPrint + setPlacement);
   setPlacement = map(DMXval, 0, 65535, 0, stepsPerClockRevolution);
+  locomote(5);
   
 }

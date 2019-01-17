@@ -11,12 +11,17 @@ const int stepPin1 = 3;
 const int stepPin2 = 4;
 const int stepPin3 = 5;
 const int stepPin4 = 6;
+
 //Pins for the RC4 input
 const int highBitPin = 23;
 const int lowBitPin = 22;
 
+//Test what the servo controller actually puts out (may not between 1000 and 2000) and input its upper and lower bounds
+const int servoPulseLower = 1000;
+const int servoPulseUpper = 2000;
 
-const int stepsPerClockRevolution = 720;
+
+const int stepsPerClockRevolution = 800;
 const int tolerance = stepsPerClockRevolution / (720 / TOLERANCE);
 //Actual stepper object
 Stepper clockDrive(stepsPerRevolution, stepPin1, stepPin2, stepPin3, stepPin4);
@@ -38,14 +43,14 @@ String DMXprint = "DMX 16 bit: ";
 String positionPrint = "Position: ";
 String setPrint = "Set Position: ";
 
-
+//Update this every cycle with the calculated 16 bit DMX value
 int DMXval = 0;
 
 //Returns true for forward, false for backward
 bool getDirection(int current, int goal) {
   //Shift all values up so we don't have to monkey around with cycling through midnight
-  int goalAdjusted = goal + tolerance;
-  int currentAdjusted = current + tolerance;
+  int goalAdjusted = goal + tolerance + 1;
+  int currentAdjusted = current + tolerance + 1;
   //If goal is ahead of current, just move forward
   if (goalAdjusted > currentAdjusted) {
     Serial.println("Direction: Forward");
@@ -59,7 +64,7 @@ bool getDirection(int current, int goal) {
   }
  else {
   //Outta luck kiddo, gotta let the clock move a full half-day forward
-  Serial.println("Direction: Forward");
+  Serial.println("Direction: Forward OVER-ROTATE");
   return true;
  }
 }
@@ -77,7 +82,7 @@ void locomote(int minutes){
       currentPlacement ++;
       movementSteps --;
       //Is this spilling over midnight?
-      if (currentPlacement > stepsPerClockRevolution) {
+      if (currentPlacement >= stepsPerClockRevolution) {
         currentPlacement = currentPlacement - stepsPerClockRevolution;
       }
     }
@@ -101,10 +106,10 @@ void locomote(int minutes){
 int getDMX(){
   int highBit = pulseIn(highBitPin, HIGH);
   int lowBit = pulseIn(lowBitPin, HIGH);
-  highBit = map(highBit, 1000, 2000, 0, 255);
+  highBit = map(highBit, servoPulseLower, servoPulseUpper, 0, 255);
   highBit = constrain(highBit, 0, 255);
   Serial.println(DMXprintHigh + highBit);
-  lowBit = map(lowBit, 1000, 2000, 0, 255);
+  lowBit = map(lowBit, servoPulseLower, servoPulseUpper, 0, 255);
   lowBit = constrain(lowBit, 0, 255);
   Serial.println(DMXprintLow + lowBit);
   int sixteenBit = get16bit(highBit, lowBit);
@@ -120,9 +125,12 @@ int getDMX(){
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
-  clockDrive.setSpeed(50);
+  while (!Serial);
+  clockDrive.setSpeed(60);
   pinMode(highBitPin, INPUT);
   pinMode(lowBitPin, INPUT);
+  Serial.println("**********************************************************");
+  Serial.println(tolerance);
 }
 
 void loop() {
@@ -132,6 +140,5 @@ void loop() {
   Serial.println(positionPrint + currentPlacement);
   Serial.println(setPrint + setPlacement);
   setPlacement = map(DMXval, 0, 65535, 0, stepsPerClockRevolution);
-  locomote(50);
-  
+  locomote(5);
 }

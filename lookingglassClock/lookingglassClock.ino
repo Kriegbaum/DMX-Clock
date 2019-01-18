@@ -1,7 +1,17 @@
 #include <Stepper.h>
 
+//Comment this out to remove debug statements
+#define DEBUG
+
 //The amount of time in minutes the clock can be ahead of its setpoint before completing forward revolutions
-#define TOLERANCE 60
+#define TOLERANCE 30
+
+//Enable and disable debug printing. Timing will improve if debug is disabled, comment out line above to disable
+#ifdef DEBUG
+  #define DEBUG_PRINT(x) Serial.println(x)
+#else
+  #define DEBUG_PRINT(x)
+#endif
 
 //This is just used to help the stepper library calculate the rotation speed
 const int stepsPerRevolution = 200;
@@ -53,18 +63,18 @@ bool getDirection(int current, int goal) {
   int currentAdjusted = current + tolerance + 1;
   //If goal is ahead of current, just move forward
   if (goalAdjusted > currentAdjusted) {
-    Serial.println("Direction: Forward");
+    DEBUG_PRINT("Direction: Forward");
     return true;
   }
   //Are we behind, but within tolerance?
   else if (goalAdjusted + tolerance > currentAdjusted) {
     //You're in luck, clear to move backward
-    Serial.println("Direction: Backward");
+    DEBUG_PRINT("Direction: Backward");
     return false;
   }
  else {
   //Outta luck kiddo, gotta let the clock move a full half-day forward
-  Serial.println("Direction: Forward OVER-ROTATE");
+  DEBUG_PRINT("Direction: Forward OVER-ROTATE");
   return true;
  }
 }
@@ -73,7 +83,7 @@ bool getDirection(int current, int goal) {
 void locomote(int minutes){
   int movementSteps = stepsPerClockRevolution / (720 / minutes);
   if (getDirection(currentPlacement, setPlacement)) {
-    Serial.println("MOVING FORWARD");
+    DEBUG_PRINT("MOVING FORWARD");
     while (movementSteps > 0) {
       if (setPlacement == currentPlacement) {
         break;
@@ -88,7 +98,7 @@ void locomote(int minutes){
     }
   }
   else {
-    Serial.println("MOVING BACKWARD");
+    DEBUG_PRINT("MOVING BACKWARD");
     while (movementSteps > 0) {
       if (setPlacement == currentPlacement) {
         break;
@@ -108,10 +118,10 @@ int getDMX(){
   int lowBit = pulseIn(lowBitPin, HIGH);
   highBit = map(highBit, servoPulseLower, servoPulseUpper, 0, 255);
   highBit = constrain(highBit, 0, 255);
-  Serial.println(DMXprintHigh + highBit);
+  DEBUG_PRINT(DMXprintHigh + highBit);
   lowBit = map(lowBit, servoPulseLower, servoPulseUpper, 0, 255);
   lowBit = constrain(lowBit, 0, 255);
-  Serial.println(DMXprintLow + lowBit);
+  DEBUG_PRINT(DMXprintLow + lowBit);
   int sixteenBit = get16bit(highBit, lowBit);
   if (sixteenBit < 0) {
     sixteenBit = 0;
@@ -129,16 +139,16 @@ void setup() {
   clockDrive.setSpeed(60);
   pinMode(highBitPin, INPUT);
   pinMode(lowBitPin, INPUT);
-  Serial.println("**********************************************************");
-  Serial.println(tolerance);
+  DEBUG_PRINT("**********************************************************");
+  DEBUG_PRINT(tolerance);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
   DMXval = getDMX();
-  Serial.println(DMXprint + DMXval);
-  Serial.println(positionPrint + currentPlacement);
-  Serial.println(setPrint + setPlacement);
+  DEBUG_PRINT(DMXprint + DMXval);
+  DEBUG_PRINT(positionPrint + currentPlacement);
+  DEBUG_PRINT(setPrint + setPlacement);
   setPlacement = map(DMXval, 0, 65535, 0, stepsPerClockRevolution);
-  locomote(5);
+  locomote(2);
 }

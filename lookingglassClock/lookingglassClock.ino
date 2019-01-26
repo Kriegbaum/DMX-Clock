@@ -14,7 +14,7 @@
 #endif
 
 //This is just used to help the stepper library calculate the rotation speed
-const int stepsPerRevolution = 200;
+const int stepsPerRevolution = 513;
 
 //Pins for the stepper motor
 const int stepPin1 = 3;
@@ -27,11 +27,11 @@ const int highBitPin = 23;
 const int lowBitPin = 22;
 
 //Test what the servo controller actually puts out (may not between 1000 and 2000) and input its upper and lower bounds
-const int servoPulseLower = 1000;
-const int servoPulseUpper = 2000;
+const int servoPulseLower = 960;
+const int servoPulseUpper = 2082;
 
 
-const int stepsPerClockRevolution = 800;
+const int stepsPerClockRevolution = 6156;
 const int tolerance = stepsPerClockRevolution / (720 / TOLERANCE);
 //Actual stepper object
 Stepper clockDrive(stepsPerRevolution, stepPin1, stepPin2, stepPin3, stepPin4);
@@ -135,8 +135,7 @@ int getDMX(){
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
-  while (!Serial);
-  clockDrive.setSpeed(60);
+  clockDrive.setSpeed(25);
   pinMode(highBitPin, INPUT);
   pinMode(lowBitPin, INPUT);
   DEBUG_PRINT("**********************************************************");
@@ -150,5 +149,5 @@ void loop() {
   DEBUG_PRINT(positionPrint + currentPlacement);
   DEBUG_PRINT(setPrint + setPlacement);
   setPlacement = map(DMXval, 0, 65535, 0, stepsPerClockRevolution);
-  locomote(2);
+  locomote(5);
 }

@@ -1,0 +1,7 @@
+DMX Clock Servicable Parts List
+-28BYJ-48 Stepper motor
+-Teensy 3.2 Processor
+-DRV8833 Stepper driver
+-5mm to 3mm shaft coupler
+-3D printed custom drive shaft
+-5v power supply

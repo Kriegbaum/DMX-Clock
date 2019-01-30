@@ -31,7 +31,7 @@ const int servoPulseLower = 960;
 const int servoPulseUpper = 2082;
 
 
-const int stepsPerClockRevolution = 6156;
+const int stepsPerClockRevolution = 5475;
 const int tolerance = stepsPerClockRevolution / (720 / TOLERANCE);
 //Actual stepper object
 Stepper clockDrive(stepsPerRevolution, stepPin1, stepPin2, stepPin3, stepPin4);
@@ -88,7 +88,7 @@ void locomote(int minutes){
       if (setPlacement == currentPlacement) {
         break;
       }
-      clockDrive.step(1);
+      clockDrive.step(-1);
       currentPlacement ++;
       movementSteps --;
       //Is this spilling over midnight?
@@ -103,7 +103,7 @@ void locomote(int minutes){
       if (setPlacement == currentPlacement) {
         break;
       }
-      clockDrive.step(-1);
+      clockDrive.step(1);
       currentPlacement --;
       movementSteps --;
       if (currentPlacement < 0) {
@@ -134,20 +134,27 @@ int getDMX(){
 
 void setup() {
   // put your setup code here, to run once:
-  Serial.begin(9600);
-  clockDrive.setSpeed(25);
+  #ifdef DEBUG
+    Serial.begin(9600);
+  #endif
+  clockDrive.setSpeed(20);
   pinMode(highBitPin, INPUT);
   pinMode(lowBitPin, INPUT);
+  //This is the pin for our homing switch
+  pinMode(17, INPUT_PULLUP);
   DEBUG_PRINT("**********************************************************");
   DEBUG_PRINT(tolerance);
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  //Sets current position to 0 (Home) if homing switch is pressed
+  if (!(digitalRead(17))) {
+    currentPlacement = 0;
+  }
   DMXval = getDMX();
   DEBUG_PRINT(DMXprint + DMXval);
   DEBUG_PRINT(positionPrint + currentPlacement);
   DEBUG_PRINT(setPrint + setPlacement);
   setPlacement = map(DMXval, 0, 65535, 0, stepsPerClockRevolution);
-  locomote(5);
+  locomote(4);
 }

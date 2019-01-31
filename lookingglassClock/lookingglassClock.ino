@@ -4,7 +4,7 @@
 #define DEBUG
 
 //The amount of time in minutes the clock can be ahead of its setpoint before completing forward revolutions
-#define TOLERANCE 30
+#define TOLERANCE 90
 
 //Enable and disable debug printing. Timing will improve if debug is disabled, comment out line above to disable
 #ifdef DEBUG
@@ -30,8 +30,10 @@ const int lowBitPin = 22;
 const int servoPulseLower = 960;
 const int servoPulseUpper = 2082;
 
+bool clockDirection = true;
 
-const int stepsPerClockRevolution = 5475;
+//const int stepsPerClockRevolution = 5475;
+const int stepsPerClockRevolution = 21850;
 const int tolerance = stepsPerClockRevolution / (720 / TOLERANCE);
 //Actual stepper object
 Stepper clockDrive(stepsPerRevolution, stepPin1, stepPin2, stepPin3, stepPin4);
@@ -42,7 +44,7 @@ int setPlacement = 0;
 
 int get16bit(int high, int low){
   //takes a high and low order 8 bit integer and combines them into a 16 bit integer
-  return high*255 + low;
+  return high*256 + low;
 }
 
 //Used in various print statements, must be initialized first or else strange behavior
@@ -64,24 +66,35 @@ bool getDirection(int current, int goal) {
   //If goal is ahead of current, just move forward
   if (goalAdjusted > currentAdjusted) {
     DEBUG_PRINT("Direction: Forward");
+    if (!clockDirection) {
+      delay(150);
+    }
+    clockDirection = true;
     return true;
   }
   //Are we behind, but within tolerance?
   else if (goalAdjusted + tolerance > currentAdjusted) {
     //You're in luck, clear to move backward
     DEBUG_PRINT("Direction: Backward");
+    if (clockDirection) {
+      delay(150);
+    }
+    clockDirection = false;
     return false;
   }
  else {
   //Outta luck kiddo, gotta let the clock move a full half-day forward
   DEBUG_PRINT("Direction: Forward OVER-ROTATE");
+  if(!clockDirection) {
+    delay(150);
+  }
+  clockDirection = true;
   return true;
  }
 }
 
 //Moves the clock forward or backward a given amount of time in minutes
-void locomote(int minutes){
-  int movementSteps = stepsPerClockRevolution / (720 / minutes);
+void locomote(int movementSteps){
   if (getDirection(currentPlacement, setPlacement)) {
     DEBUG_PRINT("MOVING FORWARD");
     while (movementSteps > 0) {
@@ -92,8 +105,8 @@ void locomote(int minutes){
       currentPlacement ++;
       movementSteps --;
       //Is this spilling over midnight?
-      if (currentPlacement >= stepsPerClockRevolution) {
-        currentPlacement = currentPlacement - stepsPerClockRevolution;
+      if (currentPlacement > stepsPerClockRevolution) {
+        currentPlacement = 0;
       }
     }
   }
@@ -103,11 +116,11 @@ void locomote(int minutes){
       if (setPlacement == currentPlacement) {
         break;
       }
-      clockDrive.step(1);
-      currentPlacement --;
-      movementSteps --;
-      if (currentPlacement < 0) {
-        currentPlacement = stepsPerClockRevolution + currentPlacement;
+        clockDrive.step(1);
+        currentPlacement --;
+        movementSteps --;
+        if (currentPlacement < 0) {
+          currentPlacement = stepsPerClockRevolution;
       }
     }
   }
@@ -137,7 +150,7 @@ void setup() {
   #ifdef DEBUG
     Serial.begin(9600);
   #endif
-  clockDrive.setSpeed(20);
+  clockDrive.setSpeed(25);
   pinMode(highBitPin, INPUT);
   pinMode(lowBitPin, INPUT);
   //This is the pin for our homing switch
@@ -147,14 +160,20 @@ void setup() {
 }
 
 void loop() {
-  //Sets current position to 0 (Home) if homing switch is pressed
-  if (!(digitalRead(17))) {
-    currentPlacement = 0;
-  }
   DMXval = getDMX();
+  setPlacement = map(DMXval, 0, 65535, 0, stepsPerClockRevolution);
+
   DEBUG_PRINT(DMXprint + DMXval);
   DEBUG_PRINT(positionPrint + currentPlacement);
   DEBUG_PRINT(setPrint + setPlacement);
-  setPlacement = map(DMXval, 0, 65535, 0, stepsPerClockRevolution);
-  locomote(4);
+  
+  if (setPlacement != currentPlacement) {
+    locomote(20);  
+  }
+  //Sets current position to 0 (Home) if homing switch is pressed
+  if (!(digitalRead(17))) {
+    currentPlacement = 0;
+    clockDrive.step(17);
+    delay(100);
+  }
 }

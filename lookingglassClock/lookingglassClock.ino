@@ -33,7 +33,7 @@ const int servoPulseUpper = 2082;
 bool clockDirection = true;
 
 //const int stepsPerClockRevolution = 5475;
-const int stepsPerClockRevolution = 21850;
+const int stepsPerClockRevolution = 21930;
 const int tolerance = stepsPerClockRevolution / (720 / TOLERANCE);
 //Actual stepper object
 Stepper clockDrive(stepsPerRevolution, stepPin1, stepPin2, stepPin3, stepPin4);

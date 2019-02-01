@@ -1,10 +1,10 @@
 #include <Stepper.h>
 
 //Comment this out to remove debug statements
-#define DEBUG
+//#define DEBUG
 
 //The amount of time in minutes the clock can be ahead of its setpoint before completing forward revolutions
-#define TOLERANCE 90
+#define TOLERANCE 60
 
 //Enable and disable debug printing. Timing will improve if debug is disabled, comment out line above to disable
 #ifdef DEBUG
@@ -21,6 +21,7 @@ const int stepPin1 = 3;
 const int stepPin2 = 4;
 const int stepPin3 = 5;
 const int stepPin4 = 6;
+const int sleepPin = 21;
 
 //Pins for the RC4 input
 const int highBitPin = 23;
@@ -32,8 +33,8 @@ const int servoPulseUpper = 2082;
 
 bool clockDirection = true;
 
-//const int stepsPerClockRevolution = 5475;
-const int stepsPerClockRevolution = 21930;
+const int stepsPerClockRevolution = 5487;
+//const int stepsPerClockRevolution = 21930;
 const int tolerance = stepsPerClockRevolution / (720 / TOLERANCE);
 //Actual stepper object
 Stepper clockDrive(stepsPerRevolution, stepPin1, stepPin2, stepPin3, stepPin4);
@@ -150,6 +151,8 @@ void setup() {
   #ifdef DEBUG
     Serial.begin(9600);
   #endif
+  //Drive this pin high to activate motor driver
+  pinMode(sleepPin, OUTPUT);
   clockDrive.setSpeed(25);
   pinMode(highBitPin, INPUT);
   pinMode(lowBitPin, INPUT);
@@ -168,10 +171,18 @@ void loop() {
   DEBUG_PRINT(setPrint + setPlacement);
   
   if (setPlacement != currentPlacement) {
+    digitalWrite(sleepPin, HIGH);
+    delay(10);
     locomote(20);  
   }
+  else {
+    digitalWrite(sleepPin, LOW);
+  }
+  
   //Sets current position to 0 (Home) if homing switch is pressed
   if (!(digitalRead(17))) {
+    digitalWrite(sleepPin, HIGH);
+    delay(50);
     currentPlacement = 0;
     clockDrive.step(17);
     delay(100);

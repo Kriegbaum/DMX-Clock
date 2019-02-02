@@ -1,7 +1,7 @@
 #include <Stepper.h>
 
 //Comment this out to remove debug statements
-//#define DEBUG
+#define DEBUG
 
 //The amount of time in minutes the clock can be ahead of its setpoint before completing forward revolutions
 #define TOLERANCE 60
@@ -16,7 +16,8 @@
 //Used to filter out noise in the servo pulse reception
 int prevPulseUpper = 0;
 int prevPulseLower = 0;
-const int noiseReduction = 2;
+const int noiseReductionUpper = 1;
+const int noiseReductionLower = 3;
 
 //This is just used to help the stepper library calculate the rotation speed
 const int stepsPerRevolution = 513;
@@ -47,6 +48,7 @@ Stepper clockDrive(stepsPerRevolution, stepPin1, stepPin2, stepPin3, stepPin4);
 //Step tracking objects
 int currentPlacement = 0;
 int setPlacement = 0;
+int setPlacementActual = 0;
 
 int get16bit(int high, int low){
   //takes a high and low order 8 bit integer and combines them into a 16 bit integer
@@ -101,7 +103,10 @@ bool getDirection(int current, int goal) {
 
 //Moves the clock forward or backward a given amount of time in minutes
 void locomote(int movementSteps){
-  if (getDirection(currentPlacement, setPlacement)) {
+  adjustSet();
+  adjustSet();
+  adjustSet();
+  if (getDirection(currentPlacement, setPlacementActual)) {
     DEBUG_PRINT("MOVING FORWARD");
     while (movementSteps > 0) {
       if (setPlacement == currentPlacement) {
@@ -136,13 +141,13 @@ int getDMX(){
   int highBit = pulseIn(highBitPin, HIGH);
   int lowBit = pulseIn(lowBitPin, HIGH);
   
-  if (abs(highBit - prevPulseUpper) < noiseReduction) {
+  if (abs(highBit - prevPulseUpper) < noiseReductionUpper) {
     highBit = prevPulseUpper;
   }
   else{
     prevPulseUpper = highBit; 
   }
-  if (abs(lowBit - prevPulseLower) < noiseReduction) {
+  if (abs(lowBit - prevPulseLower) < noiseReductionLower) {
     lowBit = prevPulseLower;
   }
   else {
@@ -165,6 +170,15 @@ int getDMX(){
   return sixteenBit;
 }
 
+int adjustSet() {
+  if (setPlacementActual < setPlacement) {
+    setPlacement --;
+  }
+  else if (setPlacementActual > setPlacement) {
+    setPlacement ++;
+  }
+}
+
 void setup() {
   // put your setup code here, to run once:
   #ifdef DEBUG
@@ -183,8 +197,8 @@ void setup() {
 
 void loop() {
   DMXval = getDMX();
-  setPlacement = map(DMXval, 0, 65535, 0, stepsPerClockRevolution);
-
+  setPlacementActual = map(DMXval, 0, 65535, 0, stepsPerClockRevolution);
+  adjustSet();
   DEBUG_PRINT(DMXprint + DMXval);
   DEBUG_PRINT(positionPrint + currentPlacement);
   DEBUG_PRINT(setPrint + setPlacement);

@@ -13,6 +13,11 @@
   #define DEBUG_PRINT(x)
 #endif
 
+//Used to filter out noise in the servo pulse reception
+int prevPulseUpper = 0;
+int prevPulseLower = 0;
+const int noiseReduction = 2;
+
 //This is just used to help the stepper library calculate the rotation speed
 const int stepsPerRevolution = 513;
 
@@ -33,7 +38,7 @@ const int servoPulseUpper = 2082;
 
 bool clockDirection = true;
 
-const int stepsPerClockRevolution = 5487;
+const int stepsPerClockRevolution = 5488;
 //const int stepsPerClockRevolution = 21930;
 const int tolerance = stepsPerClockRevolution / (720 / TOLERANCE);
 //Actual stepper object
@@ -130,6 +135,20 @@ void locomote(int movementSteps){
 int getDMX(){
   int highBit = pulseIn(highBitPin, HIGH);
   int lowBit = pulseIn(lowBitPin, HIGH);
+  
+  if (abs(highBit - prevPulseUpper) < noiseReduction) {
+    highBit = prevPulseUpper;
+  }
+  else{
+    prevPulseUpper = highBit; 
+  }
+  if (abs(lowBit - prevPulseLower) < noiseReduction) {
+    lowBit = prevPulseLower;
+  }
+  else {
+    prevPulseLower = lowBit;
+  }
+    
   highBit = map(highBit, servoPulseLower, servoPulseUpper, 0, 255);
   highBit = constrain(highBit, 0, 255);
   DEBUG_PRINT(DMXprintHigh + highBit);
